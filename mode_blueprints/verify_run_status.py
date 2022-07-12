@@ -27,8 +27,8 @@ def get_args():
 
 
 def get_report_run_data(account_id, report_id, run_id, token_id, token_password):
-    """Executes a mode report run
-    see: https://mode.com/developer/api-reference/analytics/report-runs/#runReport
+    """Gets a Run Report Object
+    see:https://mode.com/developer/api-reference/analytics/report-runs/#getReportRun
     """
     mode_api_base = f"https://app.mode.com/api/{account_id}"
     get_run_endpoint = mode_api_base + f"/reports/{report_id}/runs/{run_id}"
@@ -41,7 +41,7 @@ def get_report_run_data(account_id, report_id, run_id, token_id, token_password)
                                   auth=HTTPBasicAuth(token_id, token_password))
     
     status_code = report_request.status_code
-    # save report data
+
     run_report_data = report_request.json()
     
     if status_code == 200: # Report get successful
