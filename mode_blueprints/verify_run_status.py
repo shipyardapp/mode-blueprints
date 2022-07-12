@@ -22,6 +22,7 @@ def get_args():
     parser.add_argument('--report-id', dest='report_id', required=True)
     parser.add_argument('--token-id', dest='token_id', required=True)
     parser.add_argument('--token-password', dest='token_password', required=True)
+    parser.add_argument('--run-id', dest='run_id', required=False)
     args = parser.parse_args()
     return args
 
@@ -118,6 +119,12 @@ def main():
                         report_run_id, 
                         token_id, 
                         token_password)
+    
+    run_report_file_name = shipyard.files.combine_folder_and_file_name(
+        artifact_subfolder_paths['responses'],
+        f'verify_run_{report_run_id}_response.json')
+    shipyard.files.write_json_to_file(run_data, run_report_file_name)
+    
     exit_code = handle_run_data(run_data)
     sys.exit(exit_code)
 
