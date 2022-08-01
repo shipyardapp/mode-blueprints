@@ -18,7 +18,7 @@ shipyard.logs.create_artifacts_folders(artifact_subfolder_paths)
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--account-id', dest='account_id', required=True)
+    parser.add_argument('--account-name', dest='account_name', required=True)
     parser.add_argument('--report-id', dest='report_id', required=True)
     parser.add_argument('--token-id', dest='token_id', required=True)
     parser.add_argument('--token-password', dest='token_password', required=True)
@@ -26,11 +26,11 @@ def get_args():
     return args
 
 
-def execute_run_report(account_id, report_id, token_id, token_password):
+def execute_run_report(account_name, report_id, token_id, token_password):
     """Executes a mode report run
     see: https://mode.com/developer/api-reference/analytics/report-runs/#runReport
     """
-    mode_api_base = f"https://app.mode.com/api/{account_id}"
+    mode_api_base = f"https://app.mode.com/api/{account_name}"
     run_report_endpoint = mode_api_base + f"/reports/{report_id}/runs"
     parameters = {}
 
@@ -75,7 +75,7 @@ def execute_run_report(account_id, report_id, token_id, token_password):
             "Mode Account provided is not accessible,"
             "Check if account is correct and try again"
         )
-        sys.exit(EXIT_CODE_INVALID_CREDENTIALS)    
+        sys.exit(errors.EXIT_CODE_INVALID_CREDENTIALS)    
     else: # some other error
         print(f"Mode run report returned an unknown status {status_code}/n",
               f"returned data: {report_request.text}")
@@ -86,11 +86,11 @@ def main():
     args = get_args()
     token_id = args.token_id
     token_password = args.token_password
-    account_id = args.account_id
+    account_name = args.account_name
     report_id = args.report_id
     
     # execute run report
-    report_data = execute_run_report(account_id, 
+    report_data = execute_run_report(account_name, 
                                      report_id, 
                                      token_id, 
                                      token_password)
