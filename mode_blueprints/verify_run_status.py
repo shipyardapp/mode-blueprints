@@ -18,7 +18,7 @@ shipyard.logs.create_artifacts_folders(artifact_subfolder_paths)
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--account-id', dest='account_id', required=True)
+    parser.add_argument('--account-name', dest='account_name', required=True)
     parser.add_argument('--report-id', dest='report_id', required=True)
     parser.add_argument('--token-id', dest='token_id', required=True)
     parser.add_argument('--token-password', dest='token_password', required=True)
@@ -27,11 +27,11 @@ def get_args():
     return args
 
 
-def get_report_run_data(account_id, report_id, run_id, token_id, token_password):
+def get_report_run_data(account_name, report_id, run_id, token_id, token_password):
     """Gets a Run Report Object
     see:https://mode.com/developer/api-reference/analytics/report-runs/#getReportRun
     """
-    mode_api_base = f"https://app.mode.com/api/{account_id}"
+    mode_api_base = f"https://app.mode.com/api/{account_name}"
     get_run_endpoint = mode_api_base + f"/reports/{report_id}/runs/{run_id}"
     headers = {
       'Content-Type': 'application/json',
@@ -46,7 +46,7 @@ def get_report_run_data(account_id, report_id, run_id, token_id, token_password)
     run_report_data = report_request.json()
     
     if status_code == 200: # Report get successful
-        print("Get run report for ID: {report_id} successful")
+        print(f"Get run report for ID: {report_id} successful")
         return run_report_data
     
     elif status_code == 401: # Invalid credentials
@@ -57,7 +57,13 @@ def get_report_run_data(account_id, report_id, run_id, token_id, token_password)
     elif status_code == 404: # Invalid report id
         print("Mode report: report id or run id not found")
         sys.exit(errors.EXIT_CODE_INVALID_REPORT_ID)
-        
+
+    elif status_code == 403: # Account not accessible
+        print(
+            "Mode Account provided is not accessible,"
+            "Check if account is correct and try again")
+        sys.exit(errors.EXIT_CODE_INVALID_CREDENTIALS)
+
     else: # some other error
         print(f"Mode run report returned an unknown status {status_code}/n",
               f"returned data: {report_request.text}")
@@ -107,14 +113,14 @@ def main():
     args = get_args()
     token_id = args.token_id
     token_password = args.token_password
-    account_id = args.account_id
+    account_name = args.account_name
     report_id = args.report_id
     if args.run_id:
         report_run_id = args.run_id
     else:
         report_run_id = shipyard.logs.read_pickle_file(artifact_subfolder_paths, 
                                                        'report_run_id')
-    run_data = get_report_run_data(account_id, 
+    run_data = get_report_run_data(account_name, 
                         report_id, 
                         report_run_id, 
                         token_id, 
