@@ -55,7 +55,7 @@ def execute_run_report(account_name, report_id, token_id, token_password):
     
     # handle reponse codes
     if status_code == 202: # Report run successful
-        print(f"Run report for ID: {report_id} successful")
+        print(f"Run report for ID: {report_id} was successfully triggered.")
         return run_report_data
 
     elif status_code == 400: # Bad request
@@ -70,12 +70,16 @@ def execute_run_report(account_name, report_id, token_id, token_password):
     elif status_code == 404: # Invalid report id
         print("Mode report: {report_id} not found")
         sys.exit(errors.EXIT_CODE_INVALID_REPORT_ID)
+
     elif status_code == 403: # Account not accessible
         print(
             "Mode Account provided is not accessible,"
-            "Check if account is correct and try again"
-        )
-        sys.exit(errors.EXIT_CODE_INVALID_CREDENTIALS)    
+            "Check if account is correct and try again")
+        sys.exit(errors.EXIT_CODE_INVALID_CREDENTIALS)
+    elif status_code == 500:
+        print("Mode encountered an Error trying your request.",
+             f"Check if Report ID: {report_id} is correct")
+        sys.exit(errors.EXIT_CODE_BAD_REQUEST)
     else: # some other error
         print(f"Mode run report returned an unknown status {status_code}/n",
               f"returned data: {report_request.text}")
