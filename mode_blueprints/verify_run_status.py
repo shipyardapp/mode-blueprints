@@ -22,7 +22,7 @@ def get_args():
     parser.add_argument('--report-id', dest='report_id', required=True)
     parser.add_argument('--token-id', dest='token_id', required=True)
     parser.add_argument('--token-password', dest='token_password', required=True)
-    parser.add_argument('--run-id', dest='run_id', required=False)
+    parser.add_argument('--run-id', dest='run_id', required=True)
     args = parser.parse_args()
     return args
 
@@ -115,11 +115,7 @@ def main():
     token_password = args.token_password
     account_name = args.account_name
     report_id = args.report_id
-    if args.run_id:
-        report_run_id = args.run_id
-    else:
-        report_run_id = shipyard.logs.read_pickle_file(artifact_subfolder_paths, 
-                                                       'report_run_id')
+    report_run_id = args.run_id
     run_data = get_report_run_data(account_name, 
                         report_id, 
                         report_run_id, 
