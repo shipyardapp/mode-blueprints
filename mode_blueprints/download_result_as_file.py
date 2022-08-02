@@ -18,7 +18,7 @@ shipyard.logs.create_artifacts_folders(artifact_subfolder_paths)
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--account-id', dest='account_id', required=True)
+    parser.add_argument('--account-name', dest='account_name', required=True)
     parser.add_argument('--report-id', dest='report_id', required=True)
     parser.add_argument('--token-id', dest='token_id', required=True)
     parser.add_argument('--token-password',
@@ -40,12 +40,12 @@ def get_args():
     return args
 
 
-def get_report_results(account_id, report_id, run_id, token_id, token_password,
+def get_report_results(account_name, report_id, run_id, token_id, token_password,
                        file_type):
     """Download report as file
     see:https://mode.com/developer/api-reference/analytics/report-runs/#getReportRun
     """
-    mode_api_base = f"https://app.mode.com/api/{account_id}"
+    mode_api_base = f"https://app.mode.com/api/{account_name}"
     results_api = mode_api_base + f"/reports/{report_id}/runs/{run_id}/results/"
     results_endpoint = results_api + f'content.{file_type}'
     headers = {
@@ -78,9 +78,9 @@ def get_report_results(account_id, report_id, run_id, token_id, token_password,
         sys.exit(errors.EXIT_CODE_UNKNOWN_ERROR)
 
 
-def get_report_result_as_pdf(account_id, report_id, run_id, token_id,
+def get_report_result_as_pdf(account_name, report_id, run_id, token_id,
                              token_password):
-    mode_api_base = f"https://app.mode.com/api/{account_id}"
+    mode_api_base = f"https://app.mode.com/api/{account_name}"
     pdf_data_url = mode_api_base + f"/reports/{report_id}/exports/runs/{run_id}/pdf/download"
     headers = {
         'Content-Type': 'application/json',
@@ -113,7 +113,7 @@ def main():
     args = get_args()
     token_id = args.token_id
     token_password = args.token_password
-    account_id = args.account_id
+    account_name = args.account_name
     report_id = args.report_id
     file_type = args.file_type
     # get run_id from pickle if not specified
@@ -133,10 +133,10 @@ def main():
 
     # if the file type specified is pdf, run a fetch pdf after running get results
     if file_type == 'pdf':
-        result = get_report_result_as_pdf(account_id, report_id, run_id,
+        result = get_report_result_as_pdf(account_name, report_id, run_id,
                                           token_id, token_password)
     else:  # csv and json retrieve
-        result = get_report_results(account_id, report_id, run_id, token_id,
+        result = get_report_results(account_name, report_id, run_id, token_id,
                                     token_password, file_type)
     with open(destination_file_path, 'wb+') as f:
         f.write(result.content)
