@@ -30,6 +30,7 @@ def get_args():
                         required=True)
     parser.add_argument('--dest-folder-name',
                         dest='dest_folder_name',
+                        default='',
                         required=False)
     parser.add_argument('--file-type',
                         dest='file_type',
@@ -40,28 +41,13 @@ def get_args():
     return args
 
 
-def get_report_results(account_name, report_id, run_id, token_id, token_password,
-                       file_type):
-    """Download report as file
-    see:https://mode.com/developer/api-reference/analytics/report-runs/#getReportRun
+def assess_request_status(request):
     """
-    mode_api_base = f"https://app.mode.com/api/{account_name}"
-    results_api = mode_api_base + f"/reports/{report_id}/runs/{run_id}/results/"
-    results_endpoint = results_api + f'content.{file_type}'
-    headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/hal+json'
-    }
-    print(results_endpoint)
-    report_request = requests.get(results_endpoint,
-                                  headers=headers,
-                                  auth=HTTPBasicAuth(token_id, token_password),
-                                  stream=True)
-
-    status_code = report_request.status_code
-
+    Look at the request to determine if an error should be raised.
+    """
+    status_code = request.status_code
     if status_code == 200:
-        return report_request
+        pass
 
     elif status_code == 401:  # Invalid credentials
         print("Mode API returned an Unauthorized response,",
@@ -69,44 +55,76 @@ def get_report_results(account_name, report_id, run_id, token_id, token_password
         sys.exit(errors.EXIT_CODE_INVALID_CREDENTIALS)
 
     elif status_code == 404:  # Invalid run
-        print("Mode report: report id or run id not found")
-        sys.exit(errors.EXIT_CODE_INVALID_REPORT_ID)
+        if 'account not found' in request.text:
+            print("Mode reports: account not found")
+            sys.exit(errors.EXIT_CODE_INVALID_ACCOUNT)
+        if 'report not found' in request.text:
+            print("Mode reports: report not found")
+            sys.exit(errors.EXIT_CODE_INVALID_REPORT_ID)
 
     else:  # some other error
         print(f"Mode run report returned an unknown status {status_code}/n",
-              f"returned data: {report_request.text}")
+              f"returned data: {request.text}")
         sys.exit(errors.EXIT_CODE_UNKNOWN_ERROR)
 
 
-def get_report_result_as_pdf(account_name, report_id, run_id, token_id,
-                             token_password):
+def get_report_latest_run_id(
+        account_name,
+        report_id,
+        token_id,
+        token_password):
+    """
+    Get the latest successful run ID from a given report_id.
+    """
     mode_api_base = f"https://app.mode.com/api/{account_name}"
-    pdf_data_url = mode_api_base + f"/reports/{report_id}/exports/runs/{run_id}/pdf/download"
+    results_api = f"{mode_api_base}/reports/{report_id}/runs/"
+    print(f'Finding the latest successful run_id for report {report_id}')
+    report_request = run_mode_request(token_id, token_password, results_api)
+
+    result = report_request.json()
+    assess_request_status(report_request)
+
+    # Find the latest successful run_id and return it.
+    # Will only look at the last 20 runs... but that should be good enough.
+    for report_run in result['_embedded']['report_runs']:
+        if report_run['is_latest_successful_report_run']:
+            most_recent_report_run_id = report_run['token']
+            break
+
+    print(f'The latest successful run_id is {most_recent_report_run_id}.')
+    return most_recent_report_run_id
+
+
+def generate_report_url(account_name, report_id, run_id, file_type):
+    mode_api_base = f"https://app.mode.com/api/{account_name}"
+
+    """
+    Download report as file
+    see:https://mode.com/developer/api-reference/analytics/report-runs/#getReportRun
+    or: https://mode.com/developer/api-cookbook/distribution/export-pdf/
+    """
+    if file_type == 'pdf':
+        report_url = f'{mode_api_base}/reports/{report_id}/exports/runs/{run_id}/pdf/download'
+    else:
+        report_url = f'{mode_api_base}/reports/{report_id}/runs/{run_id}/results/content.{file_type}'
+    return report_url
+
+
+def run_mode_request(
+        token_id,
+        token_password,
+        report_url):
     headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/hal+json'
     }
-    report_request = requests.get(pdf_data_url,
+    report_request = requests.get(report_url,
                                   headers=headers,
                                   auth=HTTPBasicAuth(token_id, token_password),
                                   stream=True)
-    status_code = report_request.status_code
-    if status_code == 200:
-        return report_request
 
-    elif status_code == 401:  # Invalid credentials
-        print("Mode API returned an Unauthorized response,",
-              "check if credentials are correct and try again")
-        sys.exit(errors.EXIT_CODE_INVALID_CREDENTIALS)
-
-    elif status_code == 404:  # Invalid run
-        print("Mode report: report id or run id not found")
-        sys.exit(errors.EXIT_CODE_INVALID_REPORT_ID)
-
-    else:  # some other error
-        print(f"Mode run report returned an unknown status {status_code}\n",
-              f"returned data: {report_request.text}")
-        sys.exit(errors.EXIT_CODE_UNKNOWN_ERROR)
+    assess_request_status(report_request)
+    return report_request
 
 
 def main():
@@ -116,30 +134,31 @@ def main():
     account_name = args.account_name
     report_id = args.report_id
     file_type = args.file_type
-    # get run_id from pickle if not specified
+
+    # get latest successful run_id if not specified
     if args.run_id:
         run_id = args.run_id
     else:
-        run_id = shipyard.logs.read_pickle_file(artifact_subfolder_paths,
-                                                'report_run_id')
+        run_id = get_report_latest_run_id(
+            account_name,
+            report_id,
+            token_id,
+            token_password)
     dest_file_name = args.dest_file_name
     dest_folder_name = args.dest_folder_name
 
-    # get cwd if no folder name is specified
-    if not dest_folder_name:
-        dest_folder_name = os.getcwd()
+    shipyard.files.create_folder_if_dne(dest_folder_name)
     destination_file_path = shipyard.files.combine_folder_and_file_name(
         dest_folder_name, dest_file_name)
 
-    # if the file type specified is pdf, run a fetch pdf after running get results
-    if file_type == 'pdf':
-        result = get_report_result_as_pdf(account_name, report_id, run_id,
-                                          token_id, token_password)
-    else:  # csv and json retrieve
-        result = get_report_results(account_name, report_id, run_id, token_id,
-                                    token_password, file_type)
+    report_url = generate_report_url(
+        account_name, report_id, run_id, file_type)
+    print(f'Downloading the contents of the report {report_id}.')
+    result = run_mode_request(token_id, token_password, report_url)
     with open(destination_file_path, 'wb+') as f:
         f.write(result.content)
+    print(
+        f'The contents of report {report_id} were successfully written to {destination_file_path}')
 
 
 if __name__ == "__main__":
