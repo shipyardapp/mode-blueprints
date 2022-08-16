@@ -48,7 +48,6 @@ def execute_run_report(account_name, report_id, token_id, token_password):
         auth=HTTPBasicAuth(
             token_id,
             token_password))
-    print(report_request.text)
     status_code = report_request.status_code
 
     # save report data
